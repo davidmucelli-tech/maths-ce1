@@ -438,26 +438,34 @@ const numerationExercises = [
       return {q:`${a}  ___  ${b}`, ans, type:'mcq', choices:['<','=','>']};
     }
   },
-  { id:'n_lire', ico:'📖', nm:'Lire les nombres', ds:'Chiffres ↔ lettres',
+  { id:'n_lire', ico:'✍️', nm:'Écrire en lettres', ds:'Écrire les nombres en lettres',
     gen() {
-      const words=['zéro','un','deux','trois','quatre','cinq','six','sept','huit','neuf',
-        'dix','onze','douze','treize','quatorze','quinze','seize','dix-sept','dix-huit','dix-neuf',
-        'vingt','vingt et un','vingt-deux','vingt-trois','vingt-quatre','vingt-cinq','vingt-six',
-        'vingt-sept','vingt-huit','vingt-neuf','trente','trente et un','trente-deux','trente-trois',
-        'trente-quatre','trente-cinq','trente-six','trente-sept','trente-huit','trente-neuf',
-        'quarante','quarante et un','quarante-deux','quarante-trois','quarante-quatre','quarante-cinq',
-        'quarante-six','quarante-sept','quarante-huit','quarante-neuf','cinquante'];
-      const extra={60:'soixante',61:'soixante et un',70:'soixante-dix',71:'soixante et onze',
-        80:'quatre-vingts',81:'quatre-vingt-un',90:'quatre-vingt-dix',91:'quatre-vingt-onze',100:'cent'};
-      // Pick a number and show 3 wrong letter-forms as distractors
-      const allNums=[...Object.keys(extra).map(Number),...Array.from({length:51},(_,i)=>i)];
-      const n=P(allNums);
-      const label=extra[n]||(n<words.length?words[n]:null);
-      if(!label) return this.gen();
-      // Build 3 wrong labels
-      const others=SH(allNums.filter(x=>x!==n)).slice(0,3).map(x=>extra[x]||(x<words.length?words[x]:null)).filter(Boolean);
-      if(others.length<3) return this.gen();
-      return {q:`Quel nombre correspond à :\n« ${label} »`, ans:n, type:'mcq', choices:numChoices(n)};
+      function toFr(n) {
+        if (n===1000) return 'mille';
+        const u=['','un','deux','trois','quatre','cinq','six','sept','huit','neuf',
+          'dix','onze','douze','treize','quatorze','quinze','seize','dix-sept','dix-huit','dix-neuf'];
+        const t=['','','vingt','trente','quarante','cinquante','soixante'];
+        function below100(n) {
+          if (n<20) return u[n];
+          const d=Math.floor(n/10), r=n%10;
+          if (d===7) return r===1?'soixante et onze':'soixante-'+u[10+r];
+          if (d===9) return r===0?'quatre-vingt-dix':'quatre-vingt-'+u[10+r];
+          if (d===8) return r===0?'quatre-vingts':'quatre-vingt-'+u[r];
+          if (r===0) return t[d];
+          if (r===1) return t[d]+' et un';
+          return t[d]+'-'+u[r];
+        }
+        if (n<100) return below100(n);
+        const h=Math.floor(n/100), r=n%100;
+        const hStr=h===1?'cent':u[h]+' cent'+(r===0?'s':'');
+        return r===0?hStr:hStr+' '+below100(r);
+      }
+      const n=R(1,1000);
+      const correct=toFr(n);
+      const wrongs=new Set();
+      while(wrongs.size<3){const w=R(1,1000);if(w!==n)wrongs.add(w);}
+      const choices=SH([correct,...[...wrongs].map(toFr)]);
+      return {q:`Écris en lettres :\n${n}`, ans:correct, type:'mcq', choices};
     }
   },
   { id:'n_avant', ico:'🔢', nm:'Avant / Après', ds:'Quel nombre précède ou suit ?',
