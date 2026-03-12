@@ -158,6 +158,50 @@ header{text-align:center;padding:22px 0 12px}
   .qtext{font-size:1.6rem}.exgrid{grid-template-columns:repeat(auto-fill,minmax(145px,1fr))}
   .logo{font-size:1.85rem}.mcqbtn{font-size:1.2rem;padding:12px 7px}
 }
+
+/* ACCURACY DOT on menu cards */
+.acc-dot{position:absolute;top:9px;right:9px;width:11px;height:11px;border-radius:50%;border:2px solid rgba(0,0,0,.3)}
+.acc-dot.g{background:var(--green)}.acc-dot.y{background:var(--yellow)}.acc-dot.r{background:var(--red)}
+
+/* WRONG HINT with explanation */
+.expl-text{display:block;font-size:.78rem;font-weight:400;opacity:.85;margin-top:3px}
+
+/* ERROR REVIEW in results */
+.err-section{margin-top:20px;text-align:left}
+.err-hd{font-size:.84rem;font-weight:800;color:var(--red);margin-bottom:10px}
+.err-list{max-height:300px;overflow-y:auto;padding-right:4px}
+.err-item{background:rgba(248,113,113,.09);border:1px solid rgba(248,113,113,.25);border-radius:12px;padding:10px 14px;margin-bottom:8px;font-size:.82rem}
+.err-q{color:var(--muted);margin-bottom:5px;white-space:pre-line;font-size:.78rem}
+.err-ans{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.err-bad{color:var(--red);text-decoration:line-through;font-weight:700}
+.err-good{color:var(--green);font-weight:800}
+.err-arrow{color:var(--muted)}
+.err-expl{margin-top:5px;color:rgba(240,244,255,.5);font-size:.74rem;font-style:italic}
+
+/* STATS SCREEN */
+.stats-wrap{padding:4px 0}
+.stats-h2{font-size:.78rem;font-weight:800;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin:18px 0 10px}
+.ex-row{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:11px 14px;margin-bottom:8px;cursor:pointer;transition:.17s}
+.ex-row:hover{border-color:rgba(255,255,255,.28);transform:translateX(3px)}
+.ex-row-ico{font-size:1.3rem;flex-shrink:0}
+.ex-row-info{flex:1;min-width:0}
+.ex-row-nm{font-size:.88rem;font-weight:800}
+.ex-row-cat{font-size:.7rem;color:var(--muted);margin-top:1px}
+.mini-bars{display:flex;gap:3px;align-items:flex-end;height:24px;margin-top:5px}
+.mbar{width:13px;border-radius:3px 3px 0 0;min-height:3px;transition:.2s}
+.ex-row-pct{font-size:.92rem;font-weight:800;flex-shrink:0;min-width:40px;text-align:right}
+.reco-row{background:rgba(251,191,36,.08);border:1.5px solid rgba(251,191,36,.28);border-radius:14px;padding:12px 16px;margin-bottom:8px;display:flex;align-items:center;gap:12px;cursor:pointer;transition:.17s}
+.reco-row:hover{border-color:rgba(251,191,36,.55)}
+.reco-ico2{font-size:1.5rem;flex-shrink:0}
+.reco-info{flex:1}
+.reco-nm{font-size:.88rem;font-weight:800}
+.reco-sub{font-size:.73rem;color:var(--muted);margin-top:2px}
+.reco-arrow{color:var(--yellow);font-size:1.1rem}
+.stats-empty{color:var(--muted);text-align:center;padding:48px 0;font-size:.9rem;line-height:1.9}
+.stats-global{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:4px}
+.sglob{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 20px;flex:1;text-align:center}
+.sglob-n{font-size:1.8rem;font-weight:800;color:var(--yellow)}
+.sglob-l{font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.6px}
 </style>
 </head>
 <body>
@@ -178,6 +222,7 @@ header{text-align:center;padding:22px 0 12px}
     <div class="tab" data-cat="geometrie">📐 Géométrie</div>
     <div class="tab" data-cat="mesures">📏 Mesures</div>
     <div class="tab" data-cat="problemes">🧩 Problèmes</div>
+    <div class="tab" data-cat="stats">📈 Progrès</div>
   </div>
 
   <div class="settings">
@@ -238,10 +283,15 @@ header{text-align:center;padding:22px 0 12px}
     </div>
     <div class="rtime" id="rtime"></div>
     <div class="starsrow" id="starsrow"></div>
+    <div id="error-review" style="display:none"></div>
     <div class="rbtns">
       <button class="rbtn p" id="btnReplay">🔄 Rejouer</button>
       <button class="rbtn s" id="btnMenu">🏠 Menu</button>
     </div>
+  </div>
+
+  <div id="stats-screen" class="screen">
+    <div id="stats-content" class="stats-wrap"></div>
   </div>
 </div>
 
@@ -287,6 +337,22 @@ function playRec() {
 const recKey = id => `mpc_${id}`;
 const getRec = id => { const v=localStorage.getItem(recKey(id)); return v!==null?parseInt(v):null; };
 const setRec = (id,v) => localStorage.setItem(recKey(id),v);
+
+// ════════════════════════════════════════
+// SESSION HISTORY (per exercise, last 10)
+// ════════════════════════════════════════
+const histKey = id => `mpc_h_${id}`;
+function getHist(id) { try { return JSON.parse(localStorage.getItem(histKey(id)))||[]; } catch(e){ return []; } }
+function pushHist(id, score, total) {
+  const h=getHist(id);
+  h.push({s:score, n:total});
+  if(h.length>10) h.splice(0, h.length-10);
+  localStorage.setItem(histKey(id), JSON.stringify(h));
+}
+function avgAcc(hist) {
+  if(!hist||!hist.length) return null;
+  return hist.reduce((s,h)=>s+(h.s/h.n),0)/hist.length;
+}
 
 // ════════════════════════════════════════
 // CLOCK SVG
@@ -472,7 +538,16 @@ const numerationExercises = [
         return r===0?hWord+(h>1?'s':''):hWord+'-'+below100(r);
       }
       const n=R(1,1000);
-      return {q:`Écris en lettres :\n${n}`, ans:toFr(n), type:'text'};
+      const ans=toFr(n);
+      // Contextual explanation
+      let expl='Tous les mots sont reliés par des traits d\'union.';
+      if(n>=80&&n<90) expl='"Quatre-vingts" prend un s car vingt est multiplié et termine le nombre.';
+      else if(n>=81&&n<100&&Math.floor(n/10)===8) expl='"Quatre-vingt" sans s car il est suivi d\'un autre mot.';
+      else if(n===100) expl='"Cent" seul ne prend pas de s.';
+      else if(n%100===0&&n>100) expl=`"${ans}" : cent prend un s car il est multiplié et termine le nombre.`;
+      else if(n>100&&n%100!==0&&Math.floor(n/100)>1) expl='Cent sans s car suivi d\'autres chiffres.';
+      else if(n%10===1&&n>20&&n<70) expl='On écrit "et-un" avec des traits d\'union.';
+      return {q:`Écris en lettres :\n${n}`, ans, type:'text', expl};
     }
   },
   { id:'n_avant', ico:'🔢', nm:'Avant / Après', ds:'Quel nombre précède ou suit ?',
@@ -570,23 +645,23 @@ const mesuresExercises = [
       const u = unitChoices;
       return P([
         // Longueurs
-        ()=>{ const a=R(1,9); return wrapMCQ({q:`${a} m = ? cm`}, a*100, u); },
-        ()=>{ const a=R(1,9); return wrapMCQ({q:`${a} cm = ? mm`}, a*10, u); },
-        ()=>{ const a=R(1,9); return wrapMCQ({q:`${a} dm = ? cm`}, a*10, u); },
-        ()=>{ const a=R(1,9); return wrapMCQ({q:`${a} km = ? m`}, a*1000, u); },
-        ()=>{ const a=R(1,5)*100; return wrapMCQ({q:`${a} cm = ? m`}, a/100, u); },
-        ()=>{ const a=R(1,9)*10; return wrapMCQ({q:`${a} mm = ? cm`}, a/10, u); },
-        ()=>{ const a=R(1,5); return wrapMCQ({q:`${a} m = ? mm`}, a*1000, u); },
+        ()=>{ const a=R(1,9); return wrapMCQ({q:`${a} m = ? cm`, expl:`1 m = 100 cm → ${a} × 100 = ${a*100}`}, a*100, u); },
+        ()=>{ const a=R(1,9); return wrapMCQ({q:`${a} cm = ? mm`, expl:`1 cm = 10 mm → ${a} × 10 = ${a*10}`}, a*10, u); },
+        ()=>{ const a=R(1,9); return wrapMCQ({q:`${a} dm = ? cm`, expl:`1 dm = 10 cm → ${a} × 10 = ${a*10}`}, a*10, u); },
+        ()=>{ const a=R(1,9); return wrapMCQ({q:`${a} km = ? m`, expl:`1 km = 1000 m → ${a} × 1000 = ${a*1000}`}, a*1000, u); },
+        ()=>{ const a=R(1,5)*100; return wrapMCQ({q:`${a} cm = ? m`, expl:`100 cm = 1 m → ${a} ÷ 100 = ${a/100}`}, a/100, u); },
+        ()=>{ const a=R(1,9)*10; return wrapMCQ({q:`${a} mm = ? cm`, expl:`10 mm = 1 cm → ${a} ÷ 10 = ${a/10}`}, a/10, u); },
+        ()=>{ const a=R(1,5); return wrapMCQ({q:`${a} m = ? mm`, expl:`1 m = 1000 mm → ${a} × 1000 = ${a*1000}`}, a*1000, u); },
         // Masses
-        ()=>{ const a=R(1,9); return wrapMCQ({q:`${a} kg = ? g`}, a*1000, u); },
-        ()=>{ const a=R(1,5)*1000; return wrapMCQ({q:`${a} g = ? kg`}, a/1000, u); },
-        ()=>{ const a=R(1,9)*100; return wrapMCQ({q:`${a} g = ? kg`}, a/1000, u); },
-        ()=>{ const a=R(1,5); return wrapMCQ({q:`${a} t = ? kg`}, a*1000, u); },
+        ()=>{ const a=R(1,9); return wrapMCQ({q:`${a} kg = ? g`, expl:`1 kg = 1000 g → ${a} × 1000 = ${a*1000}`}, a*1000, u); },
+        ()=>{ const a=R(1,5)*1000; return wrapMCQ({q:`${a} g = ? kg`, expl:`1000 g = 1 kg → ${a} ÷ 1000 = ${a/1000}`}, a/1000, u); },
+        ()=>{ const a=R(1,9)*100; return wrapMCQ({q:`${a} g = ? kg`, expl:`1000 g = 1 kg → ${a} ÷ 1000 = ${a/1000}`}, a/1000, u); },
+        ()=>{ const a=R(1,5); return wrapMCQ({q:`${a} t = ? kg`, expl:`1 t = 1000 kg → ${a} × 1000 = ${a*1000}`}, a*1000, u); },
         // Contenance
-        ()=>{ const a=R(1,9); return wrapMCQ({q:`${a} L = ? cL`}, a*100, u); },
-        ()=>{ const a=R(1,9); return wrapMCQ({q:`${a} L = ? mL`}, a*1000, u); },
-        ()=>{ const a=R(1,9)*100; return wrapMCQ({q:`${a} cL = ? L`}, a/100, u); },
-        ()=>{ const a=R(1,9)*10; return wrapMCQ({q:`${a} dL = ? L`}, a/10, u); },
+        ()=>{ const a=R(1,9); return wrapMCQ({q:`${a} L = ? cL`, expl:`1 L = 100 cL → ${a} × 100 = ${a*100}`}, a*100, u); },
+        ()=>{ const a=R(1,9); return wrapMCQ({q:`${a} L = ? mL`, expl:`1 L = 1000 mL → ${a} × 1000 = ${a*1000}`}, a*1000, u); },
+        ()=>{ const a=R(1,9)*100; return wrapMCQ({q:`${a} cL = ? L`, expl:`100 cL = 1 L → ${a} ÷ 100 = ${a/100}`}, a/100, u); },
+        ()=>{ const a=R(1,9)*10; return wrapMCQ({q:`${a} dL = ? L`, expl:`10 dL = 1 L → ${a} ÷ 10 = ${a/10}`}, a/10, u); },
         // Comparaisons (text MCQ, kept as-is)
         ()=>{ const pairs=[[5,'mm',1,'cm'],[2,'dm',20,'cm'],[3,'m',300,'cm'],[1,'kg',1000,'g']]; const[va,ua,vb,ub]=P(pairs); return {q:`Lequel est le plus grand :\n${va} ${ua}  ou  ${vb} ${ub} ?`, ans:`${vb} ${ub}`, type:'mcq', choices:SH([`${va} ${ua}`,`${vb} ${ub}`,'Égaux'])}; },
       ])();
@@ -741,12 +816,19 @@ const META = {
   problemes:  {t:'Problèmes 🧩', d:'Achats, groupes, mesures, partages, deux étapes…'},
 };
 
+// Map id → exercise object (for stats "Pratiquer" buttons)
+const allExsMap = {};
+const CAT_NAMES = { calculs:'Calculs', numeration:'Numération', geometrie:'Géométrie', mesures:'Mesures', problemes:'Problèmes' };
+Object.entries(CAT).forEach(([cat, exs]) => {
+  (exs||[]).filter(Boolean).forEach(ex => { allExsMap[ex.id] = {...ex, _cat: cat}; });
+});
+
 // ════════════════════════════════════════
 // STATE
 // ════════════════════════════════════════
 const S = { cat:'calculs', nb:10, perQSec:0, // 0=off, 15/10/7 = normal/rapide/génie
   ex:null, qs:[], cur:0, score:0, points:0, streak:0, mult:1,
-  startT:null, timerInt:null, timeLeft:0, done:false };
+  startT:null, timerInt:null, timeLeft:0, done:false, mistakes:[] };
 
 // ════════════════════════════════════════
 // STARS
@@ -757,7 +839,7 @@ const S = { cat:'calculs', nb:10, perQSec:0, // 0=off, 15/10/7 = normal/rapide/g
 // SCREEN SWITCHER
 // ════════════════════════════════════════
 function show(id) {
-  ['menu-screen','play-screen','results-screen'].forEach(s =>
+  ['menu-screen','play-screen','results-screen','stats-screen'].forEach(s =>
     document.getElementById(s).style.display = s===id ? 'block' : 'none'
   );
 }
@@ -768,7 +850,9 @@ function show(id) {
 document.getElementById('tabs').addEventListener('click', e => {
   const t=e.target.closest('.tab'); if(!t) return;
   document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
-  t.classList.add('active'); S.cat=t.dataset.cat; goMenu();
+  t.classList.add('active');
+  if(t.dataset.cat==='stats'){ stopTimer(); renderStats(); show('stats-screen'); return; }
+  S.cat=t.dataset.cat; goMenu();
 });
 function bindPills(id, cb) {
   document.getElementById(id).addEventListener('click', e => {
@@ -793,10 +877,13 @@ function renderMenu() {
   document.getElementById('cat-title').textContent = m.t;
   document.getElementById('cat-desc').textContent  = m.d;
   const grid=document.getElementById('exgrid'); grid.innerHTML='';
-  (CAT[S.cat]||[]).forEach(ex => {
+  (CAT[S.cat]||[]).filter(Boolean).forEach(ex => {
     const rec=getRec(ex.id);
+    const hist=getHist(ex.id);
+    const acc=avgAcc(hist.slice(-3));
     const card=document.createElement('div'); card.className='excard';
     card.innerHTML=`<span class="ico">${ex.ico}</span><div class="nm">${ex.nm}</div><div class="ds">${ex.ds}</div>${rec!==null?`<div class="rec">🏆 Record : ${rec} pts</div>`:''}`;
+    if(hist.length>0){ const dot=mk('div','acc-dot '+(acc>=.8?'g':acc>=.6?'y':'r')); card.appendChild(dot); }
     card.addEventListener('click', ()=>startGame(ex));
     grid.appendChild(card);
   });
@@ -811,7 +898,7 @@ function startGame(ex) {
   // Pre-generate questions. For infinite mode, generate a large batch and refill on demand.
   const batchSize = S.infinite ? 50 : S.nb;
   S.qs = genBatch(ex, batchSize);
-  S.cur=0; S.score=0; S.points=0; S.streak=0; S.mult=1; S.done=false;
+  S.cur=0; S.score=0; S.points=0; S.streak=0; S.mult=1; S.done=false; S.mistakes=[];
 
   show('play-screen');
   document.getElementById('ptitle').textContent=`${ex.ico} ${ex.nm}`;
@@ -874,16 +961,17 @@ function tickQTimer() {
       S.done=true;
       // Show correct answer then move on
       const qcard=document.getElementById('qcard');
-      const ans=S.qs[S.cur]?.ans;
+      const curQ=S.qs[S.cur]; const ans=curQ?.ans; const expl=curQ?.expl;
       const grid=qcard.querySelector('.mcqgrid');
       if(grid) {
         grid.querySelectorAll('.mcqbtn').forEach(b=>{
           b.disabled=true;
           if(String(b.textContent)===String(ans)) b.classList.add('ok');
         });
+        const hint=mk('div','wrong-hint'); hint.innerHTML=`✗ La réponse : <strong>${ans}</strong>${expl?`<span class="expl-text">💡 ${expl}</span>`:''}`;qcard.appendChild(hint);
       } else {
         const inp=qcard.querySelector('.text-inp');
-        if(inp){ inp.disabled=true; const vb=qcard.querySelector('.validate-btn'); if(vb) vb.disabled=true; qcard.appendChild(mk('div','wrong-hint',`✗ La réponse était : ${ans}`)); }
+        if(inp){ inp.disabled=true; const vb=qcard.querySelector('.validate-btn'); if(vb) vb.disabled=true; const hint=mk('div','wrong-hint'); hint.innerHTML=`✗ La réponse : <strong>${ans}</strong>${expl?`<span class="expl-text">💡 ${expl}</span>`:''}`;qcard.appendChild(hint); }
       }
       onAnswer(false);
     }
@@ -983,7 +1071,7 @@ function buildTextInput(card, q) {
     const ok=normalize(inp.value)===normalize(q.ans);
     inp.disabled=true; btn.disabled=true;
     inp.classList.add(ok?'ok':'ko');
-    if(!ok){ card.appendChild(mk('div','wrong-hint',`✗ La réponse était : ${q.ans}`)); }
+    if(!ok){ const h=mk('div','wrong-hint'); h.innerHTML=`✗ La réponse : <strong>${q.ans}</strong>${q.expl?`<span class="expl-text">💡 ${q.expl}</span>`:''}`;card.appendChild(h); }
     onAnswer(ok);
   }
   inp.addEventListener('keydown',e=>{if(e.key==='Enter')submit();});
@@ -1015,7 +1103,7 @@ function buildMCQ(card, q) {
       if(!ok){
         // Show correct answer
         grid.querySelectorAll('.mcqbtn').forEach(b=>{ if(String(b.textContent)===String(q.ans)) b.classList.add('ok'); });
-        const hint=mk('div','wrong-hint',`✗ La réponse était : ${q.ans}`);
+        const hint=mk('div','wrong-hint'); hint.innerHTML=`✗ La réponse : <strong>${q.ans}</strong>${q.expl?`<span class="expl-text">💡 ${q.expl}</span>`:''}`;
         card.appendChild(hint);
       }
       grid.querySelectorAll('.mcqbtn').forEach(b=>b.disabled=true);
@@ -1043,6 +1131,8 @@ function onAnswer(ok) {
     playOk();
   } else {
     S.streak=0; S.mult=1; playKo();
+    const mq=S.qs[S.cur];
+    if(mq) S.mistakes.push({q:mq.q, ans:mq.ans, expl:mq.expl||null});
   }
   // Feedback
   stopQTimer();
@@ -1052,7 +1142,7 @@ function onAnswer(ok) {
     S.cur++;
     if(!S.infinite && S.cur>=S.qs.length) showResults();
     else showQ();
-  }, 1000);
+  }, ok ? 900 : 1500);
 }
 
 function showBonusPop(text) {
@@ -1088,6 +1178,28 @@ function showResults() {
   const stars=pct===1?3:pct>=.6?2:1;
   document.getElementById('starsrow').innerHTML=[0,1,2].map(i=>`<span style="opacity:${i<stars?1:.15}">${i<stars?'⭐':'☆'}</span>`).join('');
   if(!isNew&&pct>=.8) launchConfetti();
+
+  // Push session to history
+  if(!S.infinite && total>0) pushHist(S.ex.id, S.score, total);
+
+  // Error review
+  const errDiv=document.getElementById('error-review');
+  if(S.mistakes.length>0) {
+    errDiv.style.display='block';
+    errDiv.innerHTML=`<div class="err-section">
+      <div class="err-hd">❌ ${S.mistakes.length} erreur${S.mistakes.length>1?'s':''} dans cette partie</div>
+      <div class="err-list">`
+      + S.mistakes.map(m=>`<div class="err-item">
+        <div class="err-q">${m.q.replace(/</g,'&lt;')}</div>
+        <div class="err-ans">
+          <span class="err-good">✓ ${String(m.ans).replace(/</g,'&lt;')}</span>
+        </div>
+        ${m.expl?`<div class="err-expl">💡 ${m.expl}</div>`:''}
+      </div>`).join('')
+      + `</div></div>`;
+  } else {
+    errDiv.style.display='none';
+  }
 }
 
 function launchConfetti() {
@@ -1097,6 +1209,77 @@ function launchConfetti() {
     e.style.cssText=`left:${R(2,98)}%;top:0;background:${P(cols)};width:${sz}px;height:${sz}px;border-radius:${Math.random()<.5?'50%':'2px'};--d:${R(1400,3000)}ms;--dl:${R(0,800)}ms`;
     document.body.appendChild(e); setTimeout(()=>e.remove(),3800);
   }
+}
+
+// ════════════════════════════════════════
+// STATS / PROGRESS SCREEN
+// ════════════════════════════════════════
+function renderStats() {
+  const content=document.getElementById('stats-content');
+  const allExs=Object.values(allExsMap);
+  const withData=allExs.map(ex=>{
+    const hist=getHist(ex.id);
+    const acc=avgAcc(hist);
+    return {ex, hist, acc};
+  }).filter(x=>x.hist.length>0);
+
+  if(withData.length===0){
+    content.innerHTML=`<div class="stats-empty">Aucune partie jouée pour l'instant.<br>Lance un exercice pour voir ta progression ici ! 🚀<br><br><span style="font-size:2rem">📊</span></div>`;
+    return;
+  }
+
+  // Global stats
+  const totalSessions=withData.reduce((s,x)=>s+x.hist.length,0);
+  const totalCorrect=withData.reduce((s,x)=>s+x.hist.reduce((a,h)=>a+h.s,0),0);
+  const totalQ=withData.reduce((s,x)=>s+x.hist.reduce((a,h)=>a+h.n,0),0);
+  const globalAcc=totalQ>0?totalCorrect/totalQ:0;
+
+  let html=`<div class="stats-global">
+    <div class="sglob"><div class="sglob-n">${totalSessions}</div><div class="sglob-l">parties</div></div>
+    <div class="sglob"><div class="sglob-n">${Math.round(globalAcc*100)}%</div><div class="sglob-l">réussite globale</div></div>
+    <div class="sglob"><div class="sglob-n">${totalCorrect}</div><div class="sglob-l">bonnes réponses</div></div>
+  </div>`;
+
+  // Recommendations (acc < 0.7, at least 2 sessions)
+  const toWork=withData.filter(x=>x.hist.length>=2&&x.acc!==null&&x.acc<.7).sort((a,b)=>a.acc-b.acc).slice(0,3);
+  if(toWork.length>0){
+    html+=`<div class="stats-h2">🎯 À renforcer</div>`;
+    html+=toWork.map(({ex,acc})=>`
+      <div class="reco-row" onclick="startGame(allExsMap['${ex.id}']); document.querySelectorAll('.tab').forEach(t=>{t.classList.remove('active'); if(t.dataset.cat===allExsMap['${ex.id}']._cat)t.classList.add('active')}); S.cat=allExsMap['${ex.id}']._cat;">
+        <div class="reco-ico2">${ex.ico}</div>
+        <div class="reco-info">
+          <div class="reco-nm">${ex.nm}</div>
+          <div class="reco-sub">${CAT_NAMES[ex._cat]} · Taux de réussite : ${Math.round(acc*100)}%</div>
+        </div>
+        <div class="reco-arrow">▶</div>
+      </div>`).join('');
+  }
+
+  // All exercises with data, sorted best → worst
+  html+=`<div class="stats-h2">📊 Tous les exercices joués</div>`;
+  withData.sort((a,b)=>(b.acc||0)-(a.acc||0));
+  html+=withData.map(({ex,hist,acc})=>{
+    const bars=hist.map((h,i)=>{
+      const pct=h.n>0?(h.s/h.n):0;
+      const ht=Math.max(3, Math.round(pct*24));
+      const col=pct>=.8?'var(--green)':pct>=.6?'var(--yellow)':'var(--red)';
+      const isLast=i===hist.length-1;
+      return `<div class="mbar" style="height:${ht}px;background:${col};${isLast?'opacity:1':'opacity:.6'}" title="${Math.round(pct*100)}%"></div>`;
+    }).join('');
+    const accPct=acc!==null?Math.round(acc*100):0;
+    const col=acc>=.8?'var(--green)':acc>=.6?'var(--yellow)':'var(--red)';
+    return `<div class="ex-row" onclick="startGame(allExsMap['${ex.id}']); document.querySelectorAll('.tab').forEach(t=>{t.classList.remove('active'); if(t.dataset.cat===allExsMap['${ex.id}']._cat)t.classList.add('active')}); S.cat=allExsMap['${ex.id}']._cat;">
+      <div class="ex-row-ico">${ex.ico}</div>
+      <div class="ex-row-info">
+        <div class="ex-row-nm">${ex.nm}</div>
+        <div class="ex-row-cat">${CAT_NAMES[ex._cat]} · ${hist.length} partie${hist.length>1?'s':''}</div>
+        <div class="mini-bars">${bars}</div>
+      </div>
+      <div class="ex-row-pct" style="color:${col}">${accPct}%</div>
+    </div>`;
+  }).join('');
+
+  content.innerHTML=html;
 }
 
 // ════════════════════════════════════════
