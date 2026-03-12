@@ -109,6 +109,17 @@ header{text-align:center;padding:22px 0 12px}
 .mcqbtn:disabled{cursor:default}
 .mcqbtn.sm{font-size:.95rem;padding:14px 8px}
 
+/* TEXT INPUT ANSWER */
+.text-input-wrap{display:flex;flex-direction:column;align-items:center;gap:10px;width:100%;max-width:400px;position:relative}
+.text-inp{width:100%;padding:14px 18px;border-radius:16px;border:2px solid rgba(255,255,255,.16);background:rgba(255,255,255,.06);color:#fff;font-family:'Baloo 2',cursive;font-size:1.6rem;font-weight:800;text-align:center;outline:none;transition:.17s}
+.text-inp::placeholder{color:rgba(240,244,255,.3);font-size:1rem;font-weight:400}
+.text-inp:focus{border-color:var(--purple);background:rgba(124,58,237,.12)}
+.text-inp.ok{border-color:var(--green)!important;background:rgba(52,211,153,.18)!important}
+.text-inp.ko{border-color:var(--red)!important;background:rgba(248,113,113,.12)!important}
+.validate-btn{padding:12px 32px;border-radius:999px;border:none;background:linear-gradient(135deg,var(--purple),var(--pink));color:#fff;font-family:'Baloo 2',cursive;font-size:1rem;font-weight:800;cursor:pointer;transition:.16s}
+.validate-btn:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 4px 16px rgba(124,58,237,.4)}
+.validate-btn:disabled{opacity:.5;cursor:default}
+
 .backbtn{background:rgba(255,255,255,.08);border:1.5px solid rgba(255,255,255,.12);border-radius:999px;padding:5px 14px;color:var(--muted);cursor:pointer;font-family:'Baloo 2',cursive;font-size:.78rem;font-weight:700;transition:.16s}
 .backbtn:hover{background:rgba(255,255,255,.15);color:var(--text)}
 
@@ -461,11 +472,7 @@ const numerationExercises = [
         return r===0?hStr:hStr+' '+below100(r);
       }
       const n=R(1,1000);
-      const correct=toFr(n);
-      const wrongs=new Set();
-      while(wrongs.size<3){const w=R(1,1000);if(w!==n)wrongs.add(w);}
-      const choices=SH([correct,...[...wrongs].map(toFr)]);
-      return {q:`Écris en lettres :\n${n}`, ans:correct, type:'mcq', choices};
+      return {q:`Écris en lettres :\n${n}`, ans:toFr(n), type:'text'};
     }
   },
   { id:'n_avant', ico:'🔢', nm:'Avant / Après', ds:'Quel nombre précède ou suit ?',
@@ -865,14 +872,18 @@ function tickQTimer() {
     stopQTimer();
     if(!S.done){
       S.done=true;
-      // Show correct answer on all buttons then move on
-      const grid=document.getElementById('qcard').querySelector('.mcqgrid');
+      // Show correct answer then move on
+      const qcard=document.getElementById('qcard');
+      const ans=S.qs[S.cur]?.ans;
+      const grid=qcard.querySelector('.mcqgrid');
       if(grid) {
-        const ans=S.qs[S.cur]?.ans;
         grid.querySelectorAll('.mcqbtn').forEach(b=>{
           b.disabled=true;
           if(String(b.textContent)===String(ans)) b.classList.add('ok');
         });
+      } else {
+        const inp=qcard.querySelector('.text-inp');
+        if(inp){ inp.disabled=true; const vb=qcard.querySelector('.validate-btn'); if(vb) vb.disabled=true; qcard.appendChild(mk('div','wrong-hint',`✗ La réponse était : ${ans}`)); }
       }
       onAnswer(false);
     }
@@ -884,13 +895,17 @@ function endByTime() {
   stopQTimer();
   if(!S.done){
     S.done=true;
-    const grid=document.getElementById('qcard')?.querySelector('.mcqgrid');
+    const qcard=document.getElementById('qcard');
+    const ans=S.qs[S.cur]?.ans;
+    const grid=qcard?.querySelector('.mcqgrid');
     if(grid){
-      const ans=S.qs[S.cur]?.ans;
       grid.querySelectorAll('.mcqbtn').forEach(b=>{
         b.disabled=true;
         if(String(b.textContent)===String(ans)) b.classList.add('ok');
       });
+    } else {
+      const inp=qcard?.querySelector('.text-inp');
+      if(inp){ inp.disabled=true; const vb=qcard.querySelector('.validate-btn'); if(vb) vb.disabled=true; qcard.appendChild(mk('div','wrong-hint',`✗ La réponse était : ${ans}`)); }
     }
     // Show time emoji feedback, then move to next question
     const fb=document.getElementById('fb'); fb.innerHTML='';
@@ -941,7 +956,8 @@ function showQ() {
   if(q.q&&q.q.length>50) txt.classList.add('sm');
   card.appendChild(txt);
 
-  buildMCQ(card, q);
+  if(q.type==='text') buildTextInput(card, q);
+  else buildMCQ(card, q);
   startQTimer();
 }
 
@@ -949,6 +965,31 @@ function renderStreak() {
   const bar=document.getElementById('streakBar'); bar.innerHTML='';
   if(S.streak>=3){ const sb=mk('div','streak-badge',`🔥 ${S.streak} d'affilée !`); bar.appendChild(sb); }
   if(S.mult>1){ const mb=mk('div','mult-badge',`×${S.mult} points`); bar.appendChild(mb); }
+}
+
+// ════════════════════════════════════════
+// BUILD TEXT INPUT
+// ════════════════════════════════════════
+function buildTextInput(card, q) {
+  const wrap=mk('div','text-input-wrap');
+  const inp=document.createElement('input');
+  inp.type='text'; inp.className='text-inp';
+  inp.placeholder='Écris ta réponse…';
+  inp.autocomplete='off'; inp.setAttribute('autocorrect','off'); inp.spellcheck=false;
+  const btn=mk('button','validate-btn','Valider ✓');
+  const normalize=s=>String(s).trim().toLowerCase().replace(/\s+/g,' ');
+  function submit(){
+    if(S.done) return; S.done=true;
+    const ok=normalize(inp.value)===normalize(q.ans);
+    inp.disabled=true; btn.disabled=true;
+    inp.classList.add(ok?'ok':'ko');
+    if(!ok){ card.appendChild(mk('div','wrong-hint',`✗ La réponse était : ${q.ans}`)); }
+    onAnswer(ok);
+  }
+  inp.addEventListener('keydown',e=>{if(e.key==='Enter')submit();});
+  btn.addEventListener('click',submit);
+  wrap.appendChild(inp); wrap.appendChild(btn); card.appendChild(wrap);
+  setTimeout(()=>inp.focus(),100);
 }
 
 // ════════════════════════════════════════
